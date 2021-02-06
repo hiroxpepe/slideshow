@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading;
 
 namespace Slideshow {
@@ -21,6 +22,10 @@ namespace Slideshow {
         List<FileInfo> filePathList;
 
         Index index;
+
+        Timer timer;
+
+        bool pause;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // Constructor
@@ -44,15 +49,25 @@ namespace Slideshow {
         // public Methods [verb]
 
         public void Increment() {
+            pause = true;
             index.Increment();
             Action action = setImage(filePathList);
             action();
+            var _timer = Observable.Timer(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3));
+            var _disposer = _timer.Subscribe(x => {
+                pause = false;
+            });
         }
 
         public void Decrement() {
+            pause = true;
             index.Decrement();
             Action action = setImage(filePathList);
             action();
+            var _timer = Observable.Timer(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3));
+            var _disposer = _timer.Subscribe(x => {
+                pause = false;
+            });
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,13 +84,7 @@ namespace Slideshow {
             //var _di = new DirectoryInfo(getPathForDCIM().Replace("/emulated", "").Replace("/0/","/0000-0000/"));
             // ※この環境でのパス /storage/0000-0000/DCIM/abcdefghi.jpg
             // ※この環境でのパス /storage/3838-6330/DCIM/abcdefghi.jpg
-
-            //var _di = new DirectoryInfo($"{getPathForDCIM()}/100SHARP");
-            // /storage/emulated/0/DCIM/100SHARP
-
-            var _di = new DirectoryInfo($"/storage/emulated/0/Download"); // TODO: 選択出来るように
-                                                                          // /storage/emulated/0/Download
-                                                                          // TODO: SDカードを取得するには？
+            var _di = new DirectoryInfo($"/storage/emulated/0/Download"); // TODO: 選択出来るように、SDカードを取得するには？
 
             // 画像ファイルの一覧を取得
             filePathList = _di.GetFiles()
@@ -83,23 +92,8 @@ namespace Slideshow {
                 .OrderBy(x => x.CreationTime)
                 .ToList();
 
-            // index カウンタオブジェクト生成
-            index = new Index(filePathList.Count);
-
-            // System.Threading.Timer(TimerCallback callback,Object state,int dueTime,int period)
-            // callback コールバック関数
-            // state コールバックで使用される情報
-            // dueTime　開始までの遅延 (ミリ秒)
-            // period インターバル (ミリ秒)
-            //int _idx = 0;
-            var _timer = new Timer(x => { 
-                    RunOnUiThread(setImage(filePathList));
-                    index.Increment();
-                },
-                null,
-                0,
-                1500 // タイマーで1.5秒ごとに
-            );
+            index = new Index(filePathList.Count); // index カウンタオブジェクト生成
+            startTimer();// タイマースタート
 
             // タッチ操作のリスナー登録
             ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
@@ -109,12 +103,31 @@ namespace Slideshow {
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // private Methods [verb]
 
+        private void startTimer() {
+            // System.Threading.Timer(TimerCallback callback,Object state,int dueTime,int period)
+            // callback コールバック関数
+            // state コールバックで使用される情報
+            // dueTime　開始までの遅延 (ミリ秒)
+            // period インターバル (ミリ秒)
+            //int _idx = 0;
+            timer = new Timer(x => {
+                    if (!pause) { // ポーズ中はスルー
+                        RunOnUiThread(setImage(filePathList));
+                        index.Increment();
+                    }
+                },
+                null,
+                0,
+                2000 // タイマーで2秒ごとに
+            );
+        }
+
         private Action setImage(List<FileInfo> _filePathList) {
             return () => {
                 Bitmap _bitmap = BitmapFactory.DecodeFile(_filePathList[index.Idx].ToString()); // 一枚ずつ画像表示
                 ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
                 _imageView.SetImageBitmap(_bitmap);
-                this.Title = $"Slideshow: {Idx}/{Count}";
+                this.Title = $"Slideshow: {Idx + 1}/{Count}";
                 Log.Info($"{Idx}/{Count} をセット");
                 _bitmap.Dispose();
             };
