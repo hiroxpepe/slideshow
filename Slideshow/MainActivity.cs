@@ -72,8 +72,12 @@ namespace Slideshow {
             return Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryDcim).Path;
         }
 
-        public string Hoge() {
-            return "hoge";
+        public void Increment() {
+            idx++;
+        }
+
+        public void Decrement() {
+            idx--;
         }
 
         public class OnTouchListener : Java.Lang.Object, View.IOnTouchListener {
@@ -84,12 +88,13 @@ namespace Slideshow {
             public bool OnTouch(View v, MotionEvent e) {
                 /* do stuff */
                 float touchX = e.GetX();
+                Log.Info($"touchX: {touchX}");
 
-                View _p = (View) v.Parent;
-                MainActivity _o = (MainActivity) _p.Context;
-                var _tmp = _o.Hoge();
+                View _view = (View) v.Parent;
+                MainActivity _activity = (MainActivity) _view.Context;
 
-                switch (e.Action) {
+                var _action = e.Action;
+                switch (_action) {
                     case MotionEventActions.Down:
                         mPreviousTouchPointX = (int) touchX;
                         break;
@@ -98,17 +103,19 @@ namespace Slideshow {
                         // TouchDown時のタッチ座標とTouchUp時の座標を比較しどちらにフリックしたか判定
                         if ((Math.Abs(dx) > 1)) {
                             if (dx > 0) {
-                                Log.Info($"右へフリック: {dx}");
+                                Log.Info($"touchX: {touchX} 右へフリック: {dx}");
+                                _activity.Decrement();
                             }
                         } else {
-                            Log.Info($"左へフリック: {dx}");
+                            Log.Info($"touchX: {touchX} 左へフリック: {dx}");
+                            _activity.Increment();
                         }
                         break;
                     default:
                         break;
                 }
                 mPreviousTouchPointX = (int) touchX;
-                return false;
+                return true;
             }
         }
     }
