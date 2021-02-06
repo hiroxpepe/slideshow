@@ -2,7 +2,10 @@
 using Android.Graphics;
 using Android.OS;
 using Android.Support.V7.App;
+using Android.Views;
 using Android.Widget;
+using static Android.Views.View;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -56,11 +59,47 @@ namespace Slideshow {
                 0,
                 2000 // タイマーで2秒ごとに
             );
+
+            ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
+            _imageView.SetOnTouchListener(new OnTouchListener());
+
         }
 
         private static string getPathForDCIM() {
             // DCIM フォルダを取得してる ※必ずしもSDカードではない
-            return Environment.GetExternalStoragePublicDirectory(Environment.DirectoryDcim).Path;
+            return Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryDcim).Path;
+        }
+
+        public class OnTouchListener : Java.Lang.Object, View.IOnTouchListener {
+
+            bool mIsPagerViewTouchDown = false;
+            int mPreviousTouchPointX = 0;
+
+            public bool OnTouch(View v, MotionEvent e) {
+                /* do stuff */
+                float touchX = e.GetX();
+
+                switch (e.Action) {
+                    case MotionEventActions.Down:
+                        mPreviousTouchPointX = (int) touchX;
+                        break;
+                    case MotionEventActions.Up:
+                        float dx = touchX - mPreviousTouchPointX;
+                        // TouchDown時のタッチ座標とTouchUp時の座標を比較しどちらにフリックしたか判定
+                        if ((Math.Abs(dx) > 1)) {
+                            if (dx > 0) {
+                                Log.Info($"右へフリック: {dx}");
+                            }
+                        } else {
+                            Log.Info($"左へフリック: {dx}");
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                mPreviousTouchPointX = (int) touchX;
+                return false;
+            }
         }
     }
 }
