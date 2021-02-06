@@ -4,7 +4,6 @@ using Android.OS;
 using Android.Support.V7.App;
 using Android.Views;
 using Android.Widget;
-using static Android.Views.View;
 using System;
 using System.IO;
 using System.Linq;
@@ -15,7 +14,30 @@ namespace Slideshow {
     [Activity(Label = "@string/app_name", Theme = "@style/AppTheme", MainLauncher = true)]
     public class MainActivity : AppCompatActivity {
 
-        int idx = 0;
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // Fields
+
+        Index index;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // Constructor
+
+        public MainActivity() {
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // public Methods [verb]
+
+        public void Increment() {
+            index.Increment();
+        }
+
+        public void Decrement() {
+            index.Decrement();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // protected Methods [verb]
 
         protected override void OnCreate(Bundle savedInstanceState) {
             base.OnCreate(savedInstanceState);
@@ -38,9 +60,12 @@ namespace Slideshow {
 
             // JPEGファイルの一覧を取得
             var _filePathList = _di.GetFiles()
-                .Where(x => x.Name.EndsWith(".JPG") || x.Name.EndsWith(".jpg"))
+                .Where(x => x.Name.EndsWith(".JPG") || x.Name.EndsWith(".jpg") || x.Name.EndsWith(".PNG") || x.Name.EndsWith(".png"))
                 .OrderBy(x => x.CreationTime)
                 .ToList();
+
+            // index カウンタオブジェクト生成
+            index = new Index(_filePathList.Count);
 
             // System.Threading.Timer(TimerCallback callback,Object state,int dueTime,int period)
             // callback コールバック関数
@@ -49,17 +74,15 @@ namespace Slideshow {
             // period インターバル (ミリ秒)
             //int _idx = 0;
             var _timer = new Timer(x => RunOnUiThread(() => {
-                    Bitmap _bitmap = BitmapFactory.DecodeFile(_filePathList[idx++].ToString()); // 一枚ずつ画像表示
+                    Bitmap _bitmap = BitmapFactory.DecodeFile(_filePathList[index.Idx].ToString()); // 一枚ずつ画像表示
                     ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
                     _imageView.SetImageBitmap(_bitmap);
                     _bitmap.Dispose();
-                    if (idx == _filePathList.Count) { 
-                        idx = 0;
-                    }
+                    index.Increment();
                 }),
                 null,
                 0,
-                2000 // タイマーで2秒ごとに
+                1500 // タイマーで1.5秒ごとに
             );
 
             ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
@@ -67,56 +90,116 @@ namespace Slideshow {
 
         }
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // private Methods [verb]
+
         private static string getPathForDCIM() {
             // DCIM フォルダを取得してる ※必ずしもSDカードではない
             return Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryDcim).Path;
         }
 
-        public void Increment() {
-            idx++;
-        }
-
-        public void Decrement() {
-            idx--;
-        }
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // inner Classes
 
         public class OnTouchListener : Java.Lang.Object, View.IOnTouchListener {
 
-            bool mIsPagerViewTouchDown = false;
-            int mPreviousTouchPointX = 0;
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            // Fields
+
+            int previousTouchPointX = 0;
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            // public Methods [verb]
 
             public bool OnTouch(View v, MotionEvent e) {
                 /* do stuff */
-                float touchX = e.GetX();
-                Log.Info($"touchX: {touchX}");
-
-                View _view = (View) v.Parent;
-                MainActivity _activity = (MainActivity) _view.Context;
-
-                var _action = e.Action;
-                switch (_action) {
+                float _touchPointX = e.GetX();
+                Log.Info($"_touchPointX: {_touchPointX}");
+                MainActivity _activity = getActivity(v);
+                switch (e.Action) {
                     case MotionEventActions.Down:
-                        mPreviousTouchPointX = (int) touchX;
+                        previousTouchPointX = (int) _touchPointX;
                         break;
                     case MotionEventActions.Up:
-                        float dx = touchX - mPreviousTouchPointX;
-                        // TouchDown時のタッチ座標とTouchUp時の座標を比較しどちらにフリックしたか判定
-                        if ((Math.Abs(dx) > 1)) {
-                            if (dx > 0) {
-                                Log.Info($"touchX: {touchX} 右へフリック: {dx}");
+                        float _dx = _touchPointX - previousTouchPointX;
+                        if ((Math.Abs(_dx) > 1)) { // TouchDown時のタッチ座標とTouchUp時の座標を比較しどちらにフリックしたか判定
+                            if (_dx > 0) {
+                                Log.Info($"touchX: {_touchPointX} 右へフリック: {_dx}");
                                 _activity.Decrement();
+                            } else {
+                                Log.Info($"touchX: {_touchPointX} 左へフリック: {_dx}");
+                                _activity.Increment();
                             }
-                        } else {
-                            Log.Info($"touchX: {touchX} 左へフリック: {dx}");
-                            _activity.Increment();
                         }
                         break;
                     default:
                         break;
                 }
-                mPreviousTouchPointX = (int) touchX;
                 return true;
             }
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            // private Methods [verb]
+
+            MainActivity getActivity(View view) {
+                View _view = (View) view.Parent;
+                return (MainActivity) _view.Context;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 画像のインデックスを保持するクラス
+    /// </summary>
+    public class Index {
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // Fields
+
+        int idx; // List の中の画像ファイルの index
+
+        int count; // List の中の画像ファイルの数
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // Constructor
+
+        public Index(int count) {
+            this.idx = 0;
+            this.count = count;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // Properties [noun, adjective] 
+
+        /// <summary>
+        /// 画像ファイルの index 値
+        /// </summary>
+        public int Idx {
+            get => idx;
+            private set => idx = value;
+        }
+
+        public bool HasNext {
+            get => false;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // public Methods [verb]
+
+        public void Increment() {
+            if (idx == count) {
+                idx = 0; // 最小値
+                return;
+            }
+            idx++;
+        }
+
+        public void Decrement() {
+            if (idx == 0) {
+                idx = count; // 最大値
+                return;
+            }
+            idx--;
         }
     }
 }
