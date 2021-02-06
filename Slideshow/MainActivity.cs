@@ -15,6 +15,8 @@ namespace Slideshow {
     [Activity(Label = "@string/app_name", Theme = "@style/AppTheme", MainLauncher = true)]
     public class MainActivity : AppCompatActivity {
 
+        int idx = 0;
+
         protected override void OnCreate(Bundle savedInstanceState) {
             base.OnCreate(savedInstanceState);
             // Set our view from the "main" layout resource
@@ -45,14 +47,14 @@ namespace Slideshow {
             // state コールバックで使用される情報
             // dueTime　開始までの遅延 (ミリ秒)
             // period インターバル (ミリ秒)
-            int _idx = 0;
+            //int _idx = 0;
             var _timer = new Timer(x => RunOnUiThread(() => {
-                    Bitmap _bitmap = BitmapFactory.DecodeFile(_filePathList[_idx++].ToString()); // 一枚ずつ画像表示
+                    Bitmap _bitmap = BitmapFactory.DecodeFile(_filePathList[idx++].ToString()); // 一枚ずつ画像表示
                     ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
                     _imageView.SetImageBitmap(_bitmap);
                     _bitmap.Dispose();
-                    if (_idx == _filePathList.Count) { 
-                        _idx = 0;
+                    if (idx == _filePathList.Count) { 
+                        idx = 0;
                     }
                 }),
                 null,
@@ -70,6 +72,10 @@ namespace Slideshow {
             return Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryDcim).Path;
         }
 
+        public string Hoge() {
+            return "hoge";
+        }
+
         public class OnTouchListener : Java.Lang.Object, View.IOnTouchListener {
 
             bool mIsPagerViewTouchDown = false;
@@ -78,6 +84,10 @@ namespace Slideshow {
             public bool OnTouch(View v, MotionEvent e) {
                 /* do stuff */
                 float touchX = e.GetX();
+
+                View _p = (View) v.Parent;
+                MainActivity _o = (MainActivity) _p.Context;
+                var _tmp = _o.Hoge();
 
                 switch (e.Action) {
                     case MotionEventActions.Down:
