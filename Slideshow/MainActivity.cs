@@ -5,6 +5,7 @@ using Android.Support.V7.App;
 using Android.Views;
 using Android.Widget;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -17,12 +18,26 @@ namespace Slideshow {
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // Fields
 
+        List<FileInfo> filePathList;
+
         Index index;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // Constructor
 
         public MainActivity() {
+            filePathList = new List<FileInfo>();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // Properties [noun, adjective] 
+
+        public int Count {
+            get => index.Count;
+        }
+
+        public int Idx {
+            get => index.Idx;
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -30,10 +45,14 @@ namespace Slideshow {
 
         public void Increment() {
             index.Increment();
+            Action action = setImage(filePathList);
+            action();
         }
 
         public void Decrement() {
             index.Decrement();
+            Action action = setImage(filePathList);
+            action();
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,16 +75,16 @@ namespace Slideshow {
 
             var _di = new DirectoryInfo($"/storage/emulated/0/Download"); // TODO: 選択出来るように
                                                                           // /storage/emulated/0/Download
-            // TODO: SDカードを取得するには？
+                                                                          // TODO: SDカードを取得するには？
 
-            // JPEGファイルの一覧を取得
-            var _filePathList = _di.GetFiles()
+            // 画像ファイルの一覧を取得
+            filePathList = _di.GetFiles()
                 .Where(x => x.Name.EndsWith(".JPG") || x.Name.EndsWith(".jpg") || x.Name.EndsWith(".PNG") || x.Name.EndsWith(".png"))
                 .OrderBy(x => x.CreationTime)
                 .ToList();
 
             // index カウンタオブジェクト生成
-            index = new Index(_filePathList.Count);
+            index = new Index(filePathList.Count);
 
             // System.Threading.Timer(TimerCallback callback,Object state,int dueTime,int period)
             // callback コールバック関数
@@ -73,25 +92,33 @@ namespace Slideshow {
             // dueTime　開始までの遅延 (ミリ秒)
             // period インターバル (ミリ秒)
             //int _idx = 0;
-            var _timer = new Timer(x => RunOnUiThread(() => {
-                    Bitmap _bitmap = BitmapFactory.DecodeFile(_filePathList[index.Idx].ToString()); // 一枚ずつ画像表示
-                    ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
-                    _imageView.SetImageBitmap(_bitmap);
-                    _bitmap.Dispose();
+            var _timer = new Timer(x => { 
+                    RunOnUiThread(setImage(filePathList));
                     index.Increment();
-                }),
+                },
                 null,
                 0,
                 1500 // タイマーで1.5秒ごとに
             );
 
+            // タッチ操作のリスナー登録
             ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
             _imageView.SetOnTouchListener(new OnTouchListener());
-
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // private Methods [verb]
+
+        private Action setImage(List<FileInfo> _filePathList) {
+            return () => {
+                Bitmap _bitmap = BitmapFactory.DecodeFile(_filePathList[index.Idx].ToString()); // 一枚ずつ画像表示
+                ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
+                _imageView.SetImageBitmap(_bitmap);
+                this.Title = $"Slideshow: {Idx}/{Count}";
+                Log.Info($"{Idx}/{Count} をセット");
+                _bitmap.Dispose();
+            };
+        }
 
         private static string getPathForDCIM() {
             // DCIM フォルダを取得してる ※必ずしもSDカードではない
@@ -112,7 +139,6 @@ namespace Slideshow {
             // public Methods [verb]
 
             public bool OnTouch(View v, MotionEvent e) {
-                /* do stuff */
                 float _touchPointX = e.GetX();
                 Log.Info($"_touchPointX: {_touchPointX}");
                 MainActivity _activity = getActivity(v);
@@ -124,11 +150,11 @@ namespace Slideshow {
                         float _dx = _touchPointX - previousTouchPointX;
                         if ((Math.Abs(_dx) > 1)) { // TouchDown時のタッチ座標とTouchUp時の座標を比較しどちらにフリックしたか判定
                             if (_dx > 0) {
-                                Log.Info($"touchX: {_touchPointX} 右へフリック: {_dx}");
-                                _activity.Decrement();
-                            } else {
-                                Log.Info($"touchX: {_touchPointX} 左へフリック: {_dx}");
+                                Log.Info($"{_activity.Idx}/{_activity.Count} touchX: {_touchPointX} 右へフリック: {_dx}");
                                 _activity.Increment();
+                            } else {
+                                Log.Info($"{_activity.Idx}/{_activity.Count} touchX: {_touchPointX} 左へフリック: {_dx}");
+                                _activity.Decrement();
                             }
                         }
                         break;
@@ -179,15 +205,22 @@ namespace Slideshow {
             private set => idx = value;
         }
 
+        /// <summary>
+        /// 画像ファイルの枚数
+        /// </summary>
+        public int Count {
+            get => count;
+        }
+
         public bool HasNext {
-            get => false;
+            get => false; // TODO:
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // public Methods [verb]
 
         public void Increment() {
-            if (idx == count) {
+            if (idx == count - 1) {
                 idx = 0; // 最小値
                 return;
             }
@@ -196,7 +229,7 @@ namespace Slideshow {
 
         public void Decrement() {
             if (idx == 0) {
-                idx = count; // 最大値
+                idx = count - 1; // 最大値
                 return;
             }
             idx--;
