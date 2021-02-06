@@ -2,12 +2,10 @@
 using Android.Graphics;
 using Android.OS;
 using Android.Support.V7.App;
-using Android.Runtime;
 using Android.Widget;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Android.Util;
 
 namespace Slideshow {
 
@@ -29,16 +27,15 @@ namespace Slideshow {
             //var _di = new DirectoryInfo($"{getPathForDCIM()}/100SHARP");
             // /storage/emulated/0/DCIM/100SHARP
 
-            var _di = new DirectoryInfo($"/storage/emulated/0/Download");
-            // /storage/emulated/0/Download
+            var _di = new DirectoryInfo($"/storage/emulated/0/Download"); // TODO: 選択出来るように
+                                                                          // /storage/emulated/0/Download
+            // TODO: SDカードを取得するには？
 
-            // ファイルの一覧を取得
+            // JPEGファイルの一覧を取得
             var _filePathList = _di.GetFiles()
                 .Where(x => x.Name.EndsWith(".JPG") || x.Name.EndsWith(".jpg"))
                 .OrderBy(x => x.CreationTime)
                 .ToList();
-
-            //fileList.ForEach(file => translatedPhoneWord.Text = $"Path: {file.Name}");
 
             // System.Threading.Timer(TimerCallback callback,Object state,int dueTime,int period)
             // callback コールバック関数
@@ -47,21 +44,19 @@ namespace Slideshow {
             // period インターバル (ミリ秒)
             int _idx = 0;
             var _timer = new Timer(x => RunOnUiThread(() => {
-                // 一枚ずつ画像表示
-                Bitmap _bitmap = BitmapFactory.DecodeFile(_filePathList[_idx++].ToString());
-                ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
-
-                //DisplayMetrics _mets = new DisplayMetrics();
-                //double viewWidthToBitmapWidthRatio = (double) _mets.WidthPixels / (double) _bitmap.Width;
-                //_imageView.LayoutParameters.Height = (int) (_bitmap.Height * viewWidthToBitmapWidthRatio);
-
-                _imageView.SetImageBitmap(_bitmap);
-                _bitmap.Dispose();
-                if (_idx == _filePathList.Count) { _idx = 0; }
-            }), null, 0, 2000); // タイマーで2秒ごとに
+                    Bitmap _bitmap = BitmapFactory.DecodeFile(_filePathList[_idx++].ToString()); // 一枚ずつ画像表示
+                    ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
+                    _imageView.SetImageBitmap(_bitmap);
+                    _bitmap.Dispose();
+                    if (_idx == _filePathList.Count) { 
+                        _idx = 0;
+                    }
+                }),
+                null,
+                0,
+                2000 // タイマーで2秒ごとに
+            );
         }
-
-        // TODO: SDカードを取得するには？
 
         private static string getPathForDCIM() {
             // DCIM フォルダを取得してる ※必ずしもSDカードではない
