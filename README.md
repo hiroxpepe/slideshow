@@ -1,2 +1,2 @@
 # slideshow
-Xamarin slideshow app.
+Xamarin slideshow app for Android.
