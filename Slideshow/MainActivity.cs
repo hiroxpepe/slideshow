@@ -78,15 +78,12 @@ namespace Slideshow {
             // Set our view from the "main" layout resource
             SetContentView(Resource.Layout.activity_main);
 
-            // New code will go here
+            initializeComponent();
+        }
 
-            // 現状SDカードのDCIMフォルダのパスが判定出来ないので、強引に実パスに変換している TODO: 修正
-            //var _di = new DirectoryInfo(getPathForDCIM().Replace("/emulated", "").Replace("/0/","/0000-0000/"));
-            // ※この環境でのパス /storage/0000-0000/DCIM/abcdefghi.jpg
-            // ※この環境でのパス /storage/3838-6330/DCIM/abcdefghi.jpg
-            var _di = new DirectoryInfo($"/storage/emulated/0/Download"); // TODO: 選択出来るように、SDカードを取得するには？
-
-            // 画像ファイルの一覧を取得
+        protected override void OnStart() {
+            base.OnStart();
+            var _di = new DirectoryInfo($"/storage/emulated/0/Download"); // 画像ファイルの一覧を取得
             filePathList = _di.GetFiles()
                 .Where(x => x.Name.EndsWith(".JPG") || x.Name.EndsWith(".jpg") || x.Name.EndsWith(".PNG") || x.Name.EndsWith(".png"))
                 .OrderBy(x => x.CreationTime)
@@ -94,14 +91,18 @@ namespace Slideshow {
 
             index = new Index(filePathList.Count); // index カウンタオブジェクト生成
             startTimer();// タイマースタート
-
-            // タッチ操作のリスナー登録
-            ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
-            _imageView.SetOnTouchListener(new OnTouchListener());
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // private Methods [verb]
+
+        /// <summary>
+        /// コンポーネントを初期化します
+        /// </summary>
+        void initializeComponent() {
+            ImageView _imageView = FindViewById<ImageView>(Resource.Id.MainImageView);
+            _imageView.SetOnTouchListener(new OnTouchListener());
+        }
 
         private void startTimer() {
             // System.Threading.Timer(TimerCallback callback,Object state,int dueTime,int period)
